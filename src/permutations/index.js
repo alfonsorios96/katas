@@ -1,26 +1,5 @@
 'use strict';
 
-const getAllPermutations = array => {
-    let result = [];
-
-    for (const index in array) {
-        let rest = getAllPermutations(array.slice(0, index).concat(array.slice(index + 1)));
-
-        if (!rest.length) {
-            result.push([array[index]]);
-        } else {
-            for (const j in rest) {
-                result.push([array[index]].concat(rest[j]));
-            }
-        }
-    }
-    result = result.map(item => item.join(''));
-    result = result.filter(item => item.length === array.length);
-    result = new Set(result);
-    result = [...result];
-    return result;
-};
-
 const getPermutations = array => {
     if (array.length === 1) {
         return [array];
