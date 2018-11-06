@@ -1,7 +1,5 @@
 'use strict';
 
-'use strict';
-
 const getStringWithoutVowels = string => {
     const vowels = ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U'];
     const array = string.split('');
