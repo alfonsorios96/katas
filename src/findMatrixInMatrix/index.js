@@ -1,17 +1,32 @@
 'use strict';
 
-const getSubMatrixLargest = (matrix = []) => {
+const getSubMatrixLargest = (matrix = [], matrices = []) => {
     const order = matrix.length;
-    let isValid = sameZerosAndOnes(matrix, order);
-    if (isValid) {
-        return matrix;
-    } else {
-        const decrement = order % 2 === 0 ? 2 : 1;
-        const matrices = getAllSubMatrixByOrder(matrix, order - decrement);
-        for (const mat of matrices) {
-            return getSubMatrixLargest(mat);
+
+    if (matrix.length > 0) {
+        const isValid = sameZerosAndOnes(matrix, order);
+        if (isValid) {
+            return matrix;
         }
-        return [];
+    }
+
+    if (matrices.length > 0) {
+        for (const mat of matrices) {
+            matrices.splice(matrices.indexOf(mat), 1);
+            const aux = getSubMatrixLargest(mat, matrices);
+            if (aux) {
+                return aux;
+            }
+        }
+    } else {
+        const isValid = sameZerosAndOnes(matrix, order);
+        if (isValid) {
+            return matrix;
+        } else {
+            const decrement = order % 2 === 0 ? 2 : 1;
+            const otherMatrices = getAllSubMatrixByOrder(matrix, order - decrement);
+            return getSubMatrixLargest(otherMatrices[0], otherMatrices);
+        }
     }
 };
 
