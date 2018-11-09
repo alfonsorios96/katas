@@ -3,207 +3,402 @@
 const validator = require('../sudokuSolutionValidator');
 
 const solverSudoku = matrix => {
-    const options = getAllOptions(matrix);
-    const matrices = combineOptions(options);
-    console.log(matrices);
-};
-
-const combineOptions = options => {
-    const matrices = [];
-
-    const paths = generatePaths(options);
-    let counter = 0;
-    do {
-        const matrix = [];
-        for (const option of options) {
-            const position = paths[counter];
-            while (option[position] === undefined) {
-                counter++;
+    while (!validator(matrix)) {
+        const zeros = getZerosPosition(matrix);
+        const solutions = [];
+        for (const zeroPostion of zeros) {
+            const numbers = getNumbersByZero(matrix, zeroPostion);
+            if (!Array.isArray(numbers)) {
+                solutions.push({
+                    position: zeroPostion,
+                    value: numbers
+                });
             }
-            matrix.push(option[position]);
-            counter++;
         }
-        if (validator(matrix)) {
-            matrices.push(matrix);
+        for (const solution of solutions) {
+            matrix[solution.position.x][solution.position.y] = solution.value;
         }
-    } while (counter < paths.length);
-
-    return matrices;
+    }
+    return matrix;
 };
 
-const generatePaths = options => {
-    let paths = [];
-    let major = options.reduce((accumulator, iterator) => {
-        if (Array.isArray(accumulator)) {
-            return accumulator.length < iterator.length ? iterator.length : accumulator.length;
-        } else {
-            return accumulator < iterator.length ? iterator.length : accumulator;
-        }
-    });
-    const numbers = [];
-    major--;
-    while (major >= 0) {
-        numbers.push(major);
-        major--;
-    }
-    for (const permutation of getPermutationsWithRepeats(numbers, options.length)) {
-        paths.push(permutation);
-    }
-    return paths;
+const getNumbersByZero = (matrix, position) => {
+    const row = getRowByPosition(matrix, position);
+    const column = getColumnByPosition(matrix, position);
+    const grid = getGridByPosition(matrix, position);
+    const result = intersection(row, column, grid);
+    return result.length === 1 ? result[0] : result;
 };
 
-// PERMUTATION GENERATOR ------------------------------
-
-// getPermutationsWithRepeats :: [a] -> Int -> Generator [a]
-function* getPermutationsWithRepeats(xs, intGroup) {
-    const
-        vs = Array.from(xs),
-        intBase = vs.length,
-        intSet = Math.pow(intBase, intGroup);
-    if (0 < intBase) {
-        let index = 0;
-        while (index < intSet) {
-            const
-                ds = unfoldr(
-                    v => 0 < v ? (() => {
-                        const rd = quotRem(v, intBase);
-                        return Just(Tuple(vs[rd[1]], rd[0]))
-                    })() : Nothing(),
-                    index++
-                );
-            yield replicate(
-                intGroup - ds.length,
-                vs[0]
-            ).concat(ds);
-        }
-
-    }
-}
-
-// GENERIC FUNCTIONS ----------------------------------
-
-// Just :: a -> Maybe a
-const Just = x => ({
-    type: 'Maybe',
-    Nothing: false,
-    Just: x
-});
-
-// Nothing :: Maybe a
-const Nothing = () => ({
-    type: 'Maybe',
-    Nothing: true,
-});
-
-// Tuple (,) :: a -> b -> (a, b)
-const Tuple = (a, b) => ({
-    type: 'Tuple',
-    '0': a,
-    '1': b,
-    length: 2
-});
-
-// concat :: [[a]] -> [a]
-// concat :: [String] -> String
-const concat = xs =>
-    0 < xs.length ? (() => {
-        const unit = 'string' !== typeof xs[0] ? (
-            []
-        ) : '';
-        return unit.concat.apply(unit, xs);
-    })() : [];
-
-// index (!!) :: [a] -> Int -> a
-// index (!!) :: String -> Int -> Char
-const index = (xs, i) => xs[i];
-
-// quotRem :: Int -> Int -> (Int, Int)
-const quotRem = (m, n) =>
-    Tuple(Math.floor(m / n), m % n);
-
-// replicate :: Int -> a -> [a]
-const replicate = (n, x) =>
-    Array.from({
-        length: n
-    }, () => x);
-
-// show :: a -> String
-const show = x => JSON.stringify(x);
-
-// toLower :: String -> String
-const toLower = s => s.toLocaleLowerCase();
-
-// unfoldr(x => 0 !== x ? Just([x, x - 1]) : Nothing(), 10);
-// --> [10,9,8,7,6,5,4,3,2,1]
-
-// unfoldr :: (b -> Maybe (a, b)) -> b -> [a]
-const unfoldr = (f, v) => {
-    let
-        xr = [v, v],
-        xs = [];
-    while (true) {
-        const mb = f(xr[1]);
-        if (mb.Nothing) {
-            return xs
-        } else {
-            xr = mb.Just;
-            xs.push(xr[0])
+const getZerosPosition = matrix => {
+    const zeros = [];
+    for (const x in matrix) {
+        for (const y in matrix[x]) {
+            if (matrix[x][y] === 0) {
+                zeros.push({x: Number(x), y: Number(y)});
+            }
         }
     }
+    return zeros;
 };
 
-const getPermutationsNoRepeats = array => {
-    if (array.length === 1) {
-        return [array];
-    }
-    let permutationsResult = [];
+const getColumnByPosition = (matrix, position) => {
+    const column = [];
+    const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
-    const smallerPermutations = getPermutationsNoRepeats(array.slice(1));
-
-    const firstOption = array[0];
-
-    for (const permIndex in smallerPermutations) {
-        const smallerPermutation = smallerPermutations[permIndex];
-        for (let positionIndex = 0; positionIndex <= smallerPermutation.length; positionIndex += 1) {
-            const permutationPrefix = smallerPermutation.slice(0, positionIndex);
-            const permutationSuffix = smallerPermutation.slice(positionIndex);
-            permutationsResult.push(permutationPrefix.concat([firstOption], permutationSuffix));
+    for (let i = 0; i < matrix.length; i++) {
+        const number = matrix[i][position.y];
+        if (number !== 0) {
+            column.push(number);
         }
     }
-    permutationsResult = new Set(permutationsResult);
-    permutationsResult = [...permutationsResult];
-    return permutationsResult;
 
+    return numbers.filter(number => !column.includes(number));
 };
 
-const getAllOptions = matrix => {
-    const options = [];
-    for (const row of matrix) {
-        const alternatives = getOptionsByRow(row);
-        options.push(alternatives);
-    }
-    return options;
-};
-
-const getOptionsByRow = row => {
+const getGridByPosition = (matrix, position) => {
+    let grid = [];
     const result = [];
-    const missingNumbers = getNumbersMissing(row);
-    const permutations = getPermutationsNoRepeats(missingNumbers);
-    const originalRow = row.slice();
-    for (const permutation of permutations) {
-        for (const number of permutation) {
-            row.splice(row.indexOf(0), 1, number);
+    const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    const grids = [
+        [
+            {
+                x: 0,
+                y: 0
+            }, {
+            x: 0,
+            y: 1
+        },
+            {
+                x: 0,
+                y: 2
+            },
+            {
+                x: 1,
+                y: 0
+            }, {
+            x: 1,
+            y: 1
+        },
+            {
+                x: 1,
+                y: 2
+            },
+            {
+                x: 2,
+                y: 0
+            }, {
+            x: 2,
+            y: 1
+        },
+            {
+                x: 2,
+                y: 2
+            }],
+        [
+            {
+                x: 0,
+                y: 3
+            }, {
+            x: 0,
+            y: 4
+        },
+            {
+                x: 0,
+                y: 5
+            },
+            {
+                x: 1,
+                y: 3
+            }, {
+            x: 1,
+            y: 4
+        },
+            {
+                x: 1,
+                y: 5
+            },
+            {
+                x: 2,
+                y: 3
+            }, {
+            x: 2,
+            y: 4
+        },
+            {
+                x: 2,
+                y: 5
+            }],
+        [
+            {
+                x: 0,
+                y: 6
+            }, {
+            x: 0,
+            y: 7
+        },
+            {
+                x: 0,
+                y: 8
+            },
+            {
+                x: 1,
+                y: 6
+            }, {
+            x: 1,
+            y: 7
+        },
+            {
+                x: 1,
+                y: 8
+            },
+            {
+                x: 2,
+                y: 6
+            }, {
+            x: 2,
+            y: 7
+        },
+            {
+                x: 2,
+                y: 8
+            }],
+        [
+            {
+                x: 3,
+                y: 0
+            }, {
+            x: 3,
+            y: 1
+        },
+            {
+                x: 3,
+                y: 2
+            },
+            {
+                x: 4,
+                y: 0
+            }, {
+            x: 4,
+            y: 1
+        },
+            {
+                x: 4,
+                y: 2
+            },
+            {
+                x: 5,
+                y: 0
+            }, {
+            x: 5,
+            y: 1
+        },
+            {
+                x: 5,
+                y: 2
+            }],
+        [
+            {
+                x: 3,
+                y: 3
+            }, {
+            x: 3,
+            y: 4
+        },
+            {
+                x: 3,
+                y: 5
+            },
+            {
+                x: 4,
+                y: 3
+            }, {
+            x: 4,
+            y: 4
+        },
+            {
+                x: 4,
+                y: 5
+            },
+            {
+                x: 5,
+                y: 3
+            }, {
+            x: 5,
+            y: 4
+        },
+            {
+                x: 5,
+                y: 5
+            }],
+        [
+            {
+                x: 3,
+                y: 6
+            }, {
+            x: 3,
+            y: 7
+        },
+            {
+                x: 3,
+                y: 8
+            },
+            {
+                x: 4,
+                y: 6
+            }, {
+            x: 4,
+            y: 7
+        },
+            {
+                x: 4,
+                y: 8
+            },
+            {
+                x: 5,
+                y: 6
+            }, {
+            x: 5,
+            y: 7
+        },
+            {
+                x: 5,
+                y: 8
+            }],
+        [
+            {
+                x: 6,
+                y: 0
+            }, {
+            x: 6,
+            y: 1
+        },
+            {
+                x: 6,
+                y: 2
+            },
+            {
+                x: 7,
+                y: 0
+            }, {
+            x: 7,
+            y: 1
+        },
+            {
+                x: 7,
+                y: 2
+            },
+            {
+                x: 8,
+                y: 0
+            }, {
+            x: 8,
+            y: 1
+        },
+            {
+                x: 8,
+                y: 2
+            }],
+        [
+            {
+                x: 6,
+                y: 3
+            }, {
+            x: 6,
+            y: 4
+        },
+            {
+                x: 6,
+                y: 5
+            },
+            {
+                x: 7,
+                y: 3
+            }, {
+            x: 7,
+            y: 4
+        },
+            {
+                x: 7,
+                y: 5
+            },
+            {
+                x: 8,
+                y: 3
+            }, {
+            x: 8,
+            y: 4
+        },
+            {
+                x: 8,
+                y: 5
+            }],
+        [
+            {
+                x: 6,
+                y: 6
+            }, {
+            x: 6,
+            y: 7
+        },
+            {
+                x: 6,
+                y: 8
+            },
+            {
+                x: 7,
+                y: 6
+            }, {
+            x: 7,
+            y: 7
+        },
+            {
+                x: 7,
+                y: 8
+            },
+            {
+                x: 8,
+                y: 6
+            }, {
+            x: 8,
+            y: 7
+        },
+            {
+                x: 8,
+                y: 8
+            }]
+    ];
+    grid = grids
+        .filter(iterator => {
+            const aux = iterator.filter(pos => {
+                return pos.x === position.x && pos.y === position.y;
+            });
+            return aux.length > 0;
+        });
+    grid = grid[0];
+    for (const item of grid) {
+        const number = matrix[item.x][item.y];
+        if (number !== 0) {
+            result.push(number);
         }
-        result.push(row);
-        row = originalRow.slice();
     }
-    return result;
+    return numbers.filter(number => !result.includes(number));
 };
 
-const getNumbersMissing = row => {
-    let numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-    const result = numbers.filter(number => !row.includes(number));
-    return result;
+const getRowByPosition = (matrix, position) => {
+    const row = [];
+    const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+    for (let i = 0; i < matrix.length; i++) {
+        const number = matrix[position.x][i];
+        if (number !== 0) {
+            row.push(number);
+        }
+    }
+
+    return numbers.filter(number => !row.includes(number));
 };
+
+const intersection = (row, column, grid) => row.filter(item => column.indexOf(item) !== -1).filter(item => grid.indexOf(item) !== -1);
 
 module.exports = solverSudoku;
