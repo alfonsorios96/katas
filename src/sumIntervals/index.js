@@ -1,33 +1,25 @@
 'use strict';
 
-const sumIntervals = (matrix) => {
-
-};
-
-const reduceSeries = series => {
-
-};
-
-const getCompleteSeries = matrix => {
-    const series = [];
-    for (const row of matrix) {
-        const min = row[0];
-        const max = row[1];
-        const numbers = [];
-        for (let i = 0; i < matrix.length; i++) {
-            const a = matrix[i][0];
-            const b = matrix[i][1];
-            if (row !== matrix[i]) {
-                if (max < a || b < min) {
-                    numbers[0] = min;
-                    numbers[1] = max;
-                } else {
-
-                }
+const sumIntervals = (intervals) => {
+    return Object
+        .assign([], intervals)
+        .sort((a, b) => a[0] - b[0])
+        .reduce((accumulator, iterator) => {
+            const com = accumulator[accumulator.length - 1];
+            if (com && (com[1] >= iterator[0] && iterator[0] >= com[0])) {
+                let tmp = iterator.concat(com).sort((a, b) => a - b);
+                accumulator[accumulator.length - 1] = [tmp[0], tmp[tmp.length - 1]];
+            } else {
+                accumulator.push(iterator);
             }
-        }
-    }
-    return series;
+            return accumulator;
+        }, []).map(item => {
+            let counter = 0;
+            for (let i = item[0]; i < item[1]; i++) {
+                counter++;
+            }
+            return counter;
+        }).reduce((accumulator, iterator) => accumulator + iterator, 0);
 };
 
 module.exports = sumIntervals;
